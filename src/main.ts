@@ -16,6 +16,13 @@ import { mountStats, renderStats } from "./ui/stats-view";
 import { store } from "./infra/storage";
 import { lang, t } from "./i18n";
 
+// Loaded fine: drop the cache-busting `?fresh=` the page may have reloaded with (see index.html).
+if (new URLSearchParams(location.search).has("fresh")) {
+  const url = new URL(location.href);
+  url.searchParams.delete("fresh");
+  history.replaceState(history.state, "", url);
+}
+
 document.documentElement.lang = lang;
 document.title = t("docTitle");
 
