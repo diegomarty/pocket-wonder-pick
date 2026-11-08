@@ -1277,9 +1277,12 @@ select {
   display: flex;
   align-items: center;
   gap: 12px;
-  max-width: calc(100% - 32px);
+  /* Without a set width, left: 50% would squeeze a long message into half the screen. */
+  width: max-content;
+  max-width: min(520px, calc(100% - 32px));
   padding: 10px 16px;
-  border-radius: 999px;
+  border-radius: 18px;
+  line-height: 1.3;
   background: var(--ink);
   color: var(--panel);
   font-weight: 700;
@@ -1294,6 +1297,8 @@ select {
 }
 
 .toast button {
+  flex: none;
+  min-height: 36px;
   border: 0;
   background: none;
   color: var(--gold);
@@ -1699,4 +1704,55 @@ code {
   .kpis {
     grid-template-columns: repeat(4, 1fr);
   }
+}
+
+/* ---------- screenshot reading ---------- */
+
+.shot-btn {
+  width: 100%;
+  margin: 0 0 14px;
+  border-style: dashed;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.shot-btn.busy {
+  border-style: solid;
+  cursor: progress;
+}
+
+.shot-btn.busy svg {
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shot-btn.busy svg {
+    animation: none;
+  }
+}
+
+.shot-boards {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 8px;
+  display: grid;
+  gap: 10px;
+}
+
+.shot-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  padding: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg);
 }

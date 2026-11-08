@@ -28,6 +28,8 @@ import { cardBack, cardFace, rarityTag, typeDot } from "./cards";
 import { h, icon, replace } from "./dom";
 import { closeSheet, openSheet, toast } from "./sheet";
 import { packLogo } from "./pack-logo";
+import { matchAfter, type KnownSig, type ShotRead } from "../domain/read-shot";
+import { chooseImage, loadSigs, readShot } from "./shot";
 
 const ALL_PACKS: Pack[] = [...PACKS, MIX, OTHER];
 
@@ -176,8 +178,133 @@ function beforeSection(): HTMLElement {
     { class: "panel" },
     h("div", { class: "step-head" }, h("span", { class: "step" }, "2"), h("h2", null, t("step2"))),
     h("p", { class: "sub" }, tr("step2Sub")),
+    shotButton("before", t("shotBtn")),
     board(slots),
   );
+}
+
+/* ---------- screenshot ---------- */
+
+let shotBusy: "" | "before" | "after" = "";
+
+function shotButton(which: "before" | "after", label: string): HTMLElement {
+  const busy = shotBusy === which;
+  return h(
+    "button",
+    {
+      type: "button",
+      class: "btn shot-btn" + (busy ? " busy" : ""),
+      disabled: !!shotBusy,
+      "aria-busy": busy ? "true" : "false",
+      onclick: () => void fromShot(which),
+    },
+    icon("image", 18),
+    busy ? t("shotBusy") : label,
+  );
+}
+
+async function fromShot(which: "before" | "after"): Promise<void> {
+  const file = await chooseImage();
+  if (!file) return;
+  shotBusy = which;
+  render();
+  try {
+    if (which === "before") {
+      const reads = await readShot(file, { mixed: draft.pack === MIX.code });
+      if (!reads.length) toast(t("shotNone"), { error: true });
+      else if (reads.length === 1) applyBefore(reads[0]!);
+      else chooseBoard(reads, applyBefore);
+    } else {
+      const known = knownOfDraft(await loadSigs());
+      const reads = await readShot(file, { mixed: true, known });
+      if (!reads.length) toast(t("shotNone"), { error: true });
+      else if (reads.length === 1) applyAfter(reads[0]!);
+      else chooseBoard(reads, applyAfter);
+    }
+  } catch {
+    toast(t("shotFail"), { error: true });
+  } finally {
+    shotBusy = "";
+    render();
+  }
+}
+
+/** The fingerprints of the five cards already on the board, to tell them apart after the shuffle. */
+function knownOfDraft(all: KnownSig[]): KnownSig[] {
+  const keys = new Set(draft.cards.map((c) => (c ? cardArt(draft.pack, c) : null)).filter(Boolean));
+  return all.filter((k) => keys.has(k.pack.toLowerCase() + "/" + String(k.no).padStart(3, "0")));
+}
+
+/** A screenshot of the list of picks can show several: the user says which. */
+function chooseBoard(reads: ShotRead[], apply: (r: ShotRead) => void): void {
+  openSheet(t("shotChoose"), null, [
+    h(
+      "ul",
+      { class: "shot-boards" },
+      reads.map((r) =>
+        h(
+          "li",
+          null,
+          h(
+            "button",
+            {
+              type: "button",
+              class: "shot-board",
+              onclick: () => {
+                closeSheet();
+                apply(r);
+              },
+            },
+            r.slots.map((s) =>
+              s
+                ? cardFace(s.card, packByCode(s.pack)?.hue ?? 210, { size: "sm", art: cardArt(s.pack, s.card) })
+                : cardBack(),
+            ),
+          ),
+        ),
+      ),
+    ),
+  ]);
+}
+
+function applyBefore(r: ShotRead): void {
+  const prev = draft;
+  draft = newDraft(r.pack);
+  r.slots.forEach((s, i) => {
+    if (s) draft.cards[i] = { no: s.card.no, name: s.card.name, r: s.card.r, ...(s.card.hp ? { hp: s.card.hp } : {}) };
+  });
+  store.set("lastPack", r.pack);
+  update();
+  revealPack("smooth");
+  const n = r.slots.filter(Boolean).length;
+  toast(n === 5 ? t("shotRead") : t("shotPartial", { n }), {
+    action: {
+      label: t("undo"),
+      run: () => {
+        draft = prev;
+        update();
+      },
+    },
+  });
+}
+
+function applyAfter(r: ShotRead): void {
+  const after = autoComplete(matchAfter(draft.cards, r.slots));
+  const n = after.filter((v) => v >= 0).length;
+  if (!n) return toast(t("shotAfterNone"), { error: true });
+  const prev = draft.after;
+  draft.after = after;
+  if (draft.get >= 0 && after[draft.get]! < 0) draft.get = -1;
+  update();
+  toast(n === 5 ? t("shotAfterRead") : t("shotPartial", { n }), {
+    action: {
+      label: t("undo"),
+      run: () => {
+        draft.after = prev;
+        update();
+      },
+    },
+  });
 }
 
 function toggleWant(i: number): void {
@@ -507,6 +634,7 @@ function afterSection(): HTMLElement {
     { class: "panel" },
     h("div", { class: "step-head" }, h("span", { class: "step" }, "3"), h("h2", null, t("step3"))),
     h("p", { class: "sub" }, tr("step3Sub")),
+    draft.cards.every(Boolean) ? shotButton("after", t("shotAfterBtn")) : null,
     aiBox,
     board(slots),
   );
