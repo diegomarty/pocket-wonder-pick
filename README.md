@@ -1,5 +1,7 @@
 # Wonder Pick Log
 
+**Live:** https://diegomarty.github.io/pocket-wonder-pick/
+
 A log and stats page for **Wonder Pick** in Pokémon TCG Pocket. Record the five cards
 before the shuffle, which ones you wanted and which one you picked, and see whether the
 positions really are random.
@@ -57,6 +59,8 @@ npm run check         # type check
 npm test              # unit tests
 npm run format        # format with Prettier (format:check to verify)
 ```
+
+Every push to `main` is deployed to GitHub Pages by `.github/workflows/pages.yml`.
 
 Code layout: pure domain logic with tests in `src/domain/`, storage and sync in
 `src/infra/`, views in `src/ui/`, all strings in `src/i18n.ts`.
