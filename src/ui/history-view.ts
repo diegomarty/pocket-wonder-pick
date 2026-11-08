@@ -1,6 +1,6 @@
 /** History: every saved pick, newest first, with undoable delete. */
 
-import { POSITIONS, localName, packByCode } from "../domain/catalog";
+import { POSITIONS, cardArt, localName, packByCode } from "../domain/catalog";
 import { lang, t, tr } from "../i18n";
 import { isHit, type PickRecord } from "../domain/record";
 import { loadRecords, saveRecords } from "../infra/storage";
@@ -134,7 +134,7 @@ function detail(r: PickRecord, hue: number): HTMLElement {
             return h(
               "div",
               { class: "slot " + mark(i) },
-              c ? cardFace(c, hue, { size: "sm" }) : h("div", { class: "card empty" }),
+              c ? cardFace(c, hue, { size: "sm", art: cardArt(r.pack, c) }) : h("div", { class: "card empty" }),
             );
           }),
         ),

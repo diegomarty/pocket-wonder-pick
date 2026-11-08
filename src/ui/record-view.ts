@@ -8,10 +8,14 @@ import {
   POSITIONS,
   RARITY,
   RARITY_ORDER,
+  TYPES,
+  TYPE_ORDER,
+  cardArt,
   localName,
   packByCode,
   searchCards,
   type Card,
+  type CardType,
   type Pack,
   type Rarity,
 } from "../domain/catalog";
@@ -20,7 +24,7 @@ import { t, tr } from "../i18n";
 import { aggregate, predict } from "../domain/stats";
 import { loadRecords, saveRecords, store } from "../infra/storage";
 import { cachedCommunityStats, communityStats, pushPending, serverUrl } from "../infra/sync";
-import { cardBack, cardFace, rarityTag } from "./cards";
+import { cardBack, cardFace, rarityTag, typeDot } from "./cards";
 import { h, icon, replace } from "./dom";
 import { closeSheet, openSheet, toast } from "./sheet";
 import { packLogo } from "./pack-logo";
@@ -148,7 +152,9 @@ function beforeSection(): HTMLElement {
           "aria-label": c ? `${POSITIONS[i]}: ${c.name}` : t("slotEmpty", { pos: POSITIONS[i]! }),
           onclick: () => openPicker(i),
         },
-        c ? cardFace(c, p.hue) : h("div", { class: "card empty" }, icon("plus", 26), h("span", null, t("add"))),
+        c
+          ? cardFace(c, p.hue, { art: cardArt(p.code, c) })
+          : h("div", { class: "card empty" }, icon("plus", 26), h("span", null, t("add"))),
       ),
       h(
         "button",
@@ -180,17 +186,51 @@ function toggleWant(i: number): void {
 }
 
 let pickRarity: Rarity | "" = "";
+let pickType: CardType | "" = "";
+
+/** A row of filter chips that scrolls sideways, so it never takes more than one line. */
+function chipRow<T extends string>(
+  label: string,
+  options: { value: T | ""; text: string; dot?: CardType }[],
+  current: () => T | "",
+  set: (v: T | "") => void,
+): HTMLElement {
+  const row = h("div", { class: "chips", role: "group", "aria-label": label });
+  const draw = () =>
+    replace(
+      row,
+      ...options.map((o) =>
+        h(
+          "button",
+          {
+            type: "button",
+            class: "chip" + (current() === o.value ? " on" : ""),
+            "aria-pressed": current() === o.value ? "true" : "false",
+            onclick: () => {
+              set(o.value);
+              draw();
+            },
+          },
+          o.dot ? typeDot(o.dot) : null,
+          o.text,
+        ),
+      ),
+    );
+  draw();
+  return row;
+}
 
 function openPicker(slot: number): void {
   const p = pack();
-  const list = h("ul", { class: "pick-list" });
+  const pool = [...p.cards, ...ITEMS];
+  const grid = h("ul", { class: "pick-grid" });
   const q = h("input", {
     type: "search",
     placeholder: p.cards.length ? t("searchPh") : t("searchPhEmpty"),
     autocomplete: "off",
+    enterkeyhint: "search",
     "aria-label": t("searchLabel"),
   });
-  const chips = h("div", { class: "chips", role: "group", "aria-label": t("rarity") });
 
   const choose = (c: Card) => {
     draft.cards[slot] = { no: c.no, name: c.name, r: c.r, ...(c.hp ? { hp: c.hp } : {}) };
@@ -200,51 +240,72 @@ function openPicker(slot: number): void {
     if (next >= 0) setTimeout(() => openPicker(next), 220);
   };
 
+  // Only what this pack has: a filter for anything else would only ever show an empty list.
+  const rarityList = RARITY_ORDER.filter((r) => pool.some((c) => c.r === r));
+  if (pickRarity && !rarityList.includes(pickRarity)) pickRarity = "";
+  const types = TYPE_ORDER.filter((ty) => p.cards.some((c) => c.type === ty));
+  if (pickType && !types.includes(pickType)) pickType = "";
+  const untyped = p.cards.filter((c) => !c.type).length;
+
   const fill = () => {
-    const pool = [...p.cards, ...ITEMS];
-    const found = searchCards(pool, q.value, pickRarity);
-    const shown = found.slice(0, 150);
+    const found = searchCards(pool, q.value, pickRarity, pickType);
+    const shown = found.slice(0, 120);
+    grid.scrollTop = 0;
     replace(
-      list,
-      ...shown.map((c) =>
-        h(
+      grid,
+      ...shown.map((c) => {
+        const art = c.from ? cardArt("MIX", c) : cardArt(p.code, c);
+        return h(
           "li",
           null,
           h(
             "button",
-            { type: "button", class: "pick-row", onclick: () => choose(c) },
-            h("span", { class: "pick-no" }, c.no ? String(c.no).padStart(3, "0") : "—"),
-            h("span", { class: "pick-name" }, c.name, c.from ? h("small", null, c.from) : null),
-            rarityTag(c.r),
+            {
+              type: "button",
+              class: "pick-card" + (art ? "" : " drawn"),
+              "aria-label": `${c.no ? "#" + c.no + " " : ""}${c.name} ${RARITY[c.r].label}`,
+              onclick: () => choose(c),
+            },
+            cardFace(c, p.hue, { size: art ? undefined : "sm", art }),
+            h(
+              "span",
+              { class: "pick-cap" },
+              c.type ? typeDot(c.type) : null,
+              h("span", { class: "pick-cap-name" }, c.name),
+              rarityTag(c.r),
+            ),
+            c.from ? h("small", { class: "pick-from" }, c.from) : null,
           ),
-        ),
-      ),
+        );
+      }),
       found.length > shown.length ? h("li", { class: "more" }, t("more", { n: found.length - shown.length })) : null,
       !found.length ? h("li", { class: "more" }, t("noMatch")) : null,
+      pickType && untyped ? h("li", { class: "more" }, t("untypedHidden", { n: untyped })) : null,
     );
   };
-  const drawChips = () =>
-    replace(
-      chips,
-      ...(["", ...RARITY_ORDER] as (Rarity | "")[]).map((r) =>
-        h(
-          "button",
-          {
-            type: "button",
-            class: "chip" + (pickRarity === r ? " on" : ""),
-            "aria-pressed": pickRarity === r ? "true" : "false",
-            onclick: () => {
-              pickRarity = r;
-              drawChips();
-              fill();
-            },
-          },
-          r ? RARITY[r].label : t("allRar"),
-        ),
-      ),
-    );
   q.addEventListener("input", fill);
-  drawChips();
+
+  const rarities = chipRow<Rarity>(
+    t("rarity"),
+    [{ value: "", text: t("allRar") }, ...rarityList.map((r) => ({ value: r, text: RARITY[r].label }))],
+    () => pickRarity,
+    (v) => {
+      pickRarity = v;
+      fill();
+    },
+  );
+  const typeRow =
+    types.length > 1
+      ? chipRow<CardType>(
+          t("type"),
+          [{ value: "", text: t("allTypes") }, ...types.map((ty) => ({ value: ty, text: TYPES[ty].name, dot: ty }))],
+          () => pickType,
+          (v) => {
+            pickType = v;
+            fill();
+          },
+        )
+      : null;
   fill();
 
   const freeName = h("input", { placeholder: t("freeName"), maxlength: "30", autocomplete: "off" });
@@ -279,9 +340,8 @@ function openPicker(slot: number): void {
   );
 
   openSheet(t("posLabel", { n: slot + 1, pos: POSITIONS[slot]! }), `${p.code} · ${p.name}`, [
-    h("label", { class: "search" }, icon("search", 18), q),
-    chips,
-    list,
+    h("div", { class: "pick-tools" }, h("label", { class: "search" }, icon("search", 18), q), rarities, typeRow),
+    grid,
     free,
     draft.cards[slot]
       ? h(
@@ -356,7 +416,7 @@ function afterSection(): HTMLElement {
           "aria-label": t("afterSlot", { pos: POSITIONS[j]!, name: c ? c.name : t("notSet") }),
           onclick: () => openAfter(j),
         },
-        c ? cardFace(c, p.hue) : cardBack(),
+        c ? cardFace(c, p.hue, { art: cardArt(p.code, c) }) : cardBack(),
         pct !== null ? h("span", { class: "odds" }, pct + "%") : null,
       ),
       h(

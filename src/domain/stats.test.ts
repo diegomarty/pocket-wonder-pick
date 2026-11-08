@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MIX, PACKS, fold, localName, searchCards } from "./catalog";
+import { MIX, PACKS, cardArt, fold, localName, searchCards } from "./catalog";
 import { autoComplete, draftProblem, isHit, newDraft, toRecord, validRecord, type PickRecord } from "./record";
 import { aggregate, chiSquare, predict } from "./stats";
 
@@ -95,5 +95,26 @@ describe("catalog", () => {
   it("renders saved names in the page language", () => {
     expect(localName("Profesora Olim", "d2")).toBe("Professor Sada");
     expect(localName("Unknown card", "d1")).toBe("Unknown card");
+  });
+
+  it("knows each card's type and filters by it", () => {
+    const a1 = PACKS.find((p) => p.code === "A1")!;
+    expect(a1.cards.every((c) => c.type)).toBe(true);
+    expect(a1.cards[0]!.type).toBe("G");
+    const fire = searchCards(a1.cards, "", "", "R");
+    expect(fire.length).toBeGreaterThan(0);
+    expect(fire.every((c) => c.type === "R")).toBe(true);
+    expect(searchCards(a1.cards, "", "d4", "R").every((c) => c.r === "d4" && c.type === "R")).toBe(true);
+    // Cards with no HP are trainers, even in packs the type list does not cover.
+    expect(PACKS.every((p) => p.cards.every((c) => c.hp || c.type === "T"))).toBe(true);
+  });
+
+  it("finds a card's picture by pack and number, or by name", () => {
+    expect(cardArt("A1", { no: 1, name: "Bulbasaur", r: "d1" })).toBe("a1/001");
+    // Mixed list, or a card kept after switching packs: found by name, in either language.
+    expect(cardArt("MIX", { no: 1, name: "Bulbasaur", r: "d1" })).toMatch(/^[a-c]\d[a-z]?\/\d{3}$/);
+    expect(cardArt("MIX", { no: 1, name: "Profesora Olim", r: "d2" })).not.toBeNull();
+    expect(cardArt("A1", { no: 0, name: "Hand-typed", r: "d1" })).toBeNull();
+    expect(cardArt("X", { no: 0, name: "Wonder Hourglass", r: "item" })).toBeNull();
   });
 });
