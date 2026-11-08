@@ -724,8 +724,8 @@
   },
   {
     "code": "B4",
-    "name": { "en": "Rulers of the Sky", "es": "Señores del Cielo" },
-    "official": { "en": false, "es": false },
+    "name": { "en": "Ruler of the Skies", "es": "Señores del Cielo" },
+    "official": { "en": true, "es": false },
     "hue": 200,
     "cards": [
       [1, "Wurmple", "Wurmple", "d1", 60],
@@ -933,8 +933,8 @@
   },
   {
     "code": "B3b",
-    "name": { "en": "Miracle Days", "es": "Días Milagrosos" },
-    "official": { "en": false, "es": false },
+    "name": { "en": "Everyday Wonders", "es": "Días Milagrosos" },
+    "official": { "en": true, "es": false },
     "hue": 320,
     "cards": [
       [1, "Caterpie", "Caterpie", "d1", 40],
@@ -1030,8 +1030,8 @@
   },
   {
     "code": "B3a",
-    "name": { "en": "Paradox Advance", "es": "Avance Paradoja" },
-    "official": { "en": false, "es": false },
+    "name": { "en": "Paradox Drive", "es": "Avance Paradoja" },
+    "official": { "en": true, "es": false },
     "hue": 15,
     "cards": [
       [1, "Surskit", "Surskit", "d1", 60],
@@ -1130,8 +1130,8 @@
   },
   {
     "code": "B3",
-    "name": { "en": "Aura Beat", "es": "Ritmo Aural" },
-    "official": { "en": false, "es": false },
+    "name": { "en": "Pulsing Aura", "es": "Ritmo Aural" },
+    "official": { "en": true, "es": false },
     "hue": 185,
     "cards": [
       [1, "Tangela", "Tangela", "d1", 80],
