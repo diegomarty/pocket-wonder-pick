@@ -12,6 +12,8 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   base: "./",
+  // The card fingerprints (`public/card-sigs.bin`), so the tests can import them.
+  assetsInclude: ["**/*.bin"],
   test: {
     include: ["src/**/*.test.ts"],
     environment: "node",
