@@ -235,11 +235,13 @@ button:disabled {
 }
 
 .pack-chip {
+  position: relative;
+  overflow: hidden;
   flex: none;
   scroll-snap-align: start;
-  width: 86px;
-  height: 118px;
-  border-radius: 12px;
+  width: 76px;
+  height: 146px;
+  border-radius: 10px;
   border: 0;
   padding: 8px;
   display: flex;
@@ -293,17 +295,16 @@ button:disabled {
   text-shadow: 0 1px 2px rgb(0 0 0 / 35%);
 }
 
-/* Pack logos (see ui/pack-logo.ts): faded in once loaded, on a light plate so the
-   official artwork reads on any pack colour. Without a logo nothing here applies. */
+/* Pack art (see ui/pack-logo.ts): the real booster laid over the coloured tile, faded
+   in once loaded. The tile underneath keeps the code and name for screen readers and
+   is what shows for the packs that have no booster. */
 .pack-logo {
-  display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: 42px;
-  object-fit: contain;
-  padding: 3px 4px;
-  border-radius: 8px;
-  background: rgb(255 255 255 / 88%);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -312,24 +313,30 @@ button:disabled {
   opacity: 1;
 }
 
+.pack-chip.has-logo {
+  background: hsl(var(--h) 30% 50%);
+}
+
+.pack-current {
+  margin: 2px 0 0;
+  font-weight: 800;
+}
+
+/* In the history row only the bottom of the booster fits: where the expansion logo is. */
 .hist-pack .pack-logo {
-  position: absolute;
-  inset: 0;
-  height: 100%;
-  border-radius: inherit;
-  box-shadow: none;
+  object-position: 50% 88%;
 }
 
 .hist-pack.has-logo {
-  width: 72px;
+  width: 64px;
 }
 
 .bar-logo {
-  height: 18px;
-  max-width: 56px;
-  margin-right: 6px;
-  vertical-align: -4px;
-  object-fit: contain;
+  flex: none;
+  height: 30px;
+  width: auto;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
 }
 
 /* ---------- boards ---------- */
@@ -1462,6 +1469,9 @@ select {
 .bar-label {
   grid-area: label;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .bar-val {

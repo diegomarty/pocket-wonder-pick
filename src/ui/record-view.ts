@@ -96,6 +96,7 @@ function packPicker(): HTMLElement {
             "aria-checked": pk.code === p.code ? "true" : "false",
             class: "pack-chip" + (pk.code === p.code ? " on" : "") + (pk.code.length > 3 ? " special" : ""),
             style: `--h:${pk.hue}`,
+            title: pk.name,
             onclick: () => choosePack(pk.code),
           },
           h("span", { class: "pack-code" }, pk.code === "MIX" ? "∞" : pk.code === "X" ? "?" : pk.code),
@@ -104,6 +105,7 @@ function packPicker(): HTMLElement {
         ),
       ),
     ),
+    h("p", { class: "pack-current" }, t("packOf", { name: p.name })),
     !p.official ? h("p", { class: "hint" }, t("packUnofficial")) : null,
   );
 }
