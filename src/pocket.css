@@ -1139,6 +1139,135 @@ select {
   font-size: 0.85rem;
 }
 
+.sheet:focus {
+  outline: none;
+}
+
+/* Search and filters stay at the top while the cards scroll under them. */
+.pick-tools {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel);
+  padding-top: 2px;
+}
+
+.pick-tools .chips {
+  padding: 8px 0 0;
+}
+
+.pick-tools .chips:last-child {
+  padding-bottom: 10px;
+}
+
+.chips .chip {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.type-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tc);
+  box-shadow: inset 0 0 0 1.5px rgb(0 0 0 / 15%);
+}
+
+.chip.on .type-dot {
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+.pick-grid {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 10px;
+}
+
+@media (min-width: 480px) {
+  .pick-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.pick-grid .more {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 4px 2px;
+}
+
+.pick-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pick-card:active .card {
+  transform: scale(0.96);
+}
+
+.pick-cap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.pick-cap .type-dot {
+  width: 9px;
+  height: 9px;
+}
+
+.pick-cap-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pick-cap .rar {
+  font-size: 0.6rem;
+}
+
+.pick-from {
+  color: var(--muted);
+  font-size: 0.68rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A card with its real picture: the image is the whole face. */
+.card.photo {
+  background: var(--bg2);
+  box-shadow: 0 3px 8px rgb(0 0 0 / 18%);
+  border-radius: 6%/4.3%;
+}
+
+.card.photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .toast {
   position: fixed;
   left: 50%;

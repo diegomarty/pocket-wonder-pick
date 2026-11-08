@@ -15,6 +15,9 @@ import { lang, t } from "../i18n";
 
 export type Rarity = "d1" | "d2" | "d3" | "d4" | "s1" | "s2" | "item";
 
+/** Energy type of a Pokémon, or T for trainers: one letter, as in `packs.json`. */
+export type CardType = "G" | "R" | "W" | "L" | "P" | "F" | "D" | "M" | "N" | "C" | "T";
+
 export interface Card {
   no: number;
   name: string;
@@ -22,6 +25,8 @@ export interface Card {
   alt?: string;
   r: Rarity;
   hp?: number;
+  /** Missing on Pokémon of the newest packs, which the type list does not cover yet. */
+  type?: CardType;
   /** Only on cards of the mixed list, to say which pack they come from. */
   from?: string;
 }
@@ -41,7 +46,7 @@ type RawPack = {
   name: L;
   official: { en: boolean; es: boolean };
   hue: number;
-  cards: [number, string, string, string, number][];
+  cards: [number, string, string, string, number, string?][];
 };
 
 export const RARITY: Record<Rarity, { label: string; glyph: string; kind: "diamond" | "star" | "item" }> = {
@@ -53,6 +58,29 @@ export const RARITY: Record<Rarity, { label: string; glyph: string; kind: "diamo
   s2: { label: "★★", glyph: "★★", kind: "star" },
   item: { label: t("rarItem"), glyph: "⧗", kind: "item" },
 };
+
+export const TYPES: Record<CardType, { name: string; color: string }> = (() => {
+  const T: Record<CardType, [string, string, string]> = {
+    G: ["Grass", "Planta", "#4caf50"],
+    R: ["Fire", "Fuego", "#ef5a2f"],
+    W: ["Water", "Agua", "#2f9be8"],
+    L: ["Lightning", "Rayo", "#f2b705"],
+    P: ["Psychic", "Psíquico", "#a35bd6"],
+    F: ["Fighting", "Lucha", "#c0662c"],
+    D: ["Darkness", "Oscuridad", "#3f5468"],
+    M: ["Metal", "Metálico", "#8a97a8"],
+    N: ["Dragon", "Dragón", "#b38f1d"],
+    C: ["Colorless", "Incoloro", "#b9b5a8"],
+    T: ["Trainer", "Entrenador", "#6f7c96"],
+  };
+  const out = {} as Record<CardType, { name: string; color: string }>;
+  for (const k of Object.keys(T) as CardType[]) out[k] = { name: T[k][lang === "en" ? 0 : 1], color: T[k][2] };
+  return out;
+})();
+
+export const TYPE_ORDER: CardType[] = ["G", "R", "W", "L", "P", "F", "D", "M", "N", "C", "T"];
+
+const isType = (x: unknown): x is CardType => typeof x === "string" && x in TYPES;
 
 export const RARITY_ORDER: Rarity[] = ["d1", "d2", "d3", "d4", "s1", "s2", "item"];
 
@@ -93,7 +121,7 @@ export const PACKS: Pack[] = (raw as RawPack[]).map((p) => ({
   hue: p.hue,
   cards: p.cards
     .filter((c) => isRarity(c[3]))
-    .map(([no, en, es, r, hp]) => {
+    .map(([no, en, es, r, hp, type]) => {
       const n: L = { en, es };
       return {
         no,
@@ -101,6 +129,7 @@ export const PACKS: Pack[] = (raw as RawPack[]).map((p) => ({
         ...(n[other] !== n[lang] ? { alt: n[other] } : {}),
         r: r as Rarity,
         ...(hp ? { hp } : {}),
+        ...(isType(type) ? { type } : {}),
       };
     }),
 }));
@@ -155,13 +184,43 @@ export function fold(s: string): string {
     .trim();
 }
 
-export function searchCards(cards: Card[], query: string, rarity: Rarity | "" = ""): Card[] {
+export function searchCards(cards: Card[], query: string, rarity: Rarity | "" = "", type: CardType | "" = ""): Card[] {
   const q = fold(query);
   const num = /^\d+$/.test(q) ? Number(q) : null;
   return cards.filter((c) => {
     if (rarity && c.r !== rarity) return false;
+    if (type && c.type !== type) return false;
     if (!q) return true;
     if (num !== null && c.no === num) return true;
     return fold(c.name).includes(q) || (!!c.alt && fold(c.alt).includes(q));
   });
+}
+
+/**
+ * Where a card's picture lives, as `set/number` (`a1/001`), or null when there is none:
+ * items, cards typed in by hand, and anything the list does not know.
+ *
+ * Records only keep the number and name, so the pack decides first; a mixed-list card,
+ * or a card kept after switching packs, is found by name and rarity in any pack.
+ */
+const ART_BY_NAME = (() => {
+  const m = new Map<string, string>();
+  for (const p of PACKS)
+    for (const c of p.cards) {
+      const key = artPath(p.code, c.no);
+      for (const n of [c.name, c.alt]) if (n && !m.has(n + "|" + c.r)) m.set(n + "|" + c.r, key);
+    }
+  return m;
+})();
+
+function artPath(code: string, no: number): string {
+  return code.toLowerCase() + "/" + String(no).padStart(3, "0");
+}
+
+export function cardArt(packCode: string, c: { no: number; name: string; r: Rarity }): string | null {
+  if (c.r === "item" || !c.no) return null;
+  const p = PACKS.find((x) => x.code === packCode);
+  const same = p?.cards.find((x) => x.no === c.no);
+  if (p && same && (same.name === c.name || same.alt === c.name)) return artPath(p.code, c.no);
+  return ART_BY_NAME.get(c.name + "|" + c.r) ?? null;
 }

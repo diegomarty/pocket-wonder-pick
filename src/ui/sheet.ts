@@ -20,7 +20,7 @@ export function openSheet(title: string, sub: Child, body: Child[], onClose?: ()
   closeSheet();
   const panel = h(
     "div",
-    { class: "sheet", role: "dialog", "aria-modal": "true", "aria-label": title },
+    { class: "sheet", role: "dialog", "aria-modal": "true", "aria-label": title, tabindex: "-1" },
     h("div", { class: "grip", "aria-hidden": "true" }),
     h(
       "header",
@@ -36,7 +36,10 @@ export function openSheet(title: string, sub: Child, body: Child[], onClose?: ()
   open = { el: wrap, prevFocus: document.activeElement, ...(onClose ? { onClose } : {}) };
   requestAnimationFrame(() => {
     wrap.classList.add("in");
-    const first = panel.querySelector<HTMLElement>("input, .sheet-body button");
+    // On a touch screen, focusing the search box would open the keyboard over half the
+    // list; most picks are a tap, so focus the sheet itself and let a tap open it.
+    const touch = matchMedia("(pointer: coarse)").matches;
+    const first = touch ? panel : panel.querySelector<HTMLElement>("input, .sheet-body button");
     first?.focus({ preventScroll: true });
   });
   return panel;

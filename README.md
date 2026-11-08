@@ -11,7 +11,8 @@ remembered).
 
 ## What it does
 
-- **Log** — pick the pack, place the five cards as they appear before the shuffle, mark
+- **Log** — pick the pack, place the five cards as they appear before the shuffle (from
+  a grid of the pack's cards, filtered by rarity and type), mark
   the ones you want with ♥, then say where each card landed after the shuffle and which one
   you picked.
 - **Prediction** — before you pick, the face-down cards show where your ♥ cards tend to
@@ -47,6 +48,13 @@ resized) comes from the community-maintained
 [pokemon-tcg-pocket-cards](https://github.com/PocketDecks/pokemon-tcg-pocket-cards) data set. Names of the newest packs (and some
 Spanish trainer names) are our own translations and may not match the game yet; the page
 says so.
+
+Each card's type (Grass, Fire, … or Trainer) comes from the MIT-licensed v4 list of
+the same data set, added to `packs.json` by `node scripts/add-card-types.mjs`. That list
+stops before Dual Fusion (C1), so its Pokémon have no type yet and only show under "All
+types"; its trainers are recognised by having no HP. Card pictures load from that data set
+on GitHub, pinned to one commit, as you scroll (shipping them would add some 40 MB); if
+one does not load, the card is drawn in CSS instead.
 
 ## Development
 
