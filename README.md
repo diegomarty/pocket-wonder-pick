@@ -62,7 +62,11 @@ npm test              # unit tests
 npm run format        # format with Prettier (format:check to verify)
 ```
 
-Every push to `main` is deployed to GitHub Pages by `.github/workflows/pages.yml`.
+Every push to `main` is deployed to GitHub Pages by `.github/workflows/pages.yml`. In
+the repository's Settings → Pages, **Source must be "GitHub Actions"**. With "Deploy
+from a branch", GitHub also publishes the raw repository on every push, after the
+workflow, and the site serves the unbuilt `index.html` (which asks for `/src/main.ts`)
+and stays blank.
 
 Code layout: pure domain logic with tests in `src/domain/`, storage and sync in
 `src/infra/`, views in `src/ui/`, all strings in `src/i18n.ts`.
