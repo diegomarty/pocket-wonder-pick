@@ -24,7 +24,9 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run build
+      # Absolute asset URLs under the repo path: they resolve the same with or without
+      # a trailing slash in the address. Other hosts keep the relative build.
+      - run: npm run build -- --base=/pocket-wonder-pick/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

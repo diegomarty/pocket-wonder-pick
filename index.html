@@ -22,20 +22,45 @@
        * GitHub Pages caches this file for ten minutes, but every deploy renames the
        * bundle. A cached page from before a deploy would ask for files that are gone and
        * stay blank: if one of our assets fails, reload once from a fresh URL instead.
+       *
+       * If it still fails, or the app throws before it draws anything, say so on the
+       * page with the reason, rather than leaving it white.
        */
-      addEventListener(
-        "error",
-        function (e) {
-          var el = e.target;
-          var url = el && (el.src || el.href);
-          if (!url || url.indexOf("/assets/") < 0) return;
-          var u = new URL(location.href);
-          if (u.searchParams.has("fresh")) return;
-          u.searchParams.set("fresh", Date.now());
-          location.replace(u);
-        },
-        true,
-      );
+      (function () {
+        function show(why) {
+          function put() {
+            var app = document.getElementById("app");
+            if (!app || app.querySelector(":scope > :not(noscript)")) return;
+            app.style.cssText = "padding:24px;font:15px/1.5 system-ui,sans-serif;color:#18223a";
+            app.textContent = "The page could not load. Try reloading it. (" + why + ")";
+          }
+          if (document.readyState === "loading") addEventListener("DOMContentLoaded", put);
+          else put();
+        }
+        addEventListener(
+          "error",
+          function (e) {
+            var el = e.target;
+            var url = el && (el.src || el.href);
+            if (!url) {
+              show(e.message || "error");
+              return;
+            }
+            if (url.indexOf("/assets/") < 0) return;
+            var u = new URL(location.href);
+            if (u.searchParams.has("fresh")) {
+              show("missing " + url);
+              return;
+            }
+            u.searchParams.set("fresh", Date.now());
+            location.replace(u);
+          },
+          true,
+        );
+        addEventListener("unhandledrejection", function (e) {
+          show(String((e.reason && e.reason.message) || e.reason));
+        });
+      })();
     </script>
   </head>
   <body>
