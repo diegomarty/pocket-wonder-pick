@@ -1,0 +1,31 @@
+{
+  "name": "pocket-wonder-pick",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wonder Pick log and stats for Pokémon TCG Pocket, in English and Spanish.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/diegomarty/pocket-wonder-pick.git"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:only": "vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "format": "prettier --write \"src/**/*.{ts,css}\" \"*.html\" \"vite.config.ts\"",
+    "format:check": "prettier --check \"src/**/*.{ts,css}\" \"*.html\" \"vite.config.ts\""
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6",
+    "typescript": "^7.0.2",
+    "vite": "^7.1.14",
+    "vitest": "^4.1.10"
+  }
+}

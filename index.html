@@ -1,0 +1,27 @@
+<!doctype html>
+<!--
+  Wonder Pick log for Pokémon TCG Pocket (English by default, Spanish in Settings or
+  with ?lang=es). The entry is `src/main.ts`: everything is drawn from TypeScript,
+  which also sets the document language and title; this file carries only what loads
+  before it.
+-->
+<html lang="en">
+  <head>
+    <title>Wonder Pick Log</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Log your Pokémon TCG Pocket Wonder Picks: the cards before and after the shuffle, which one you wanted and which one you picked. See which positions hit most."
+    />
+    <meta name="theme-color" content="#eef3fb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1420" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  </head>
+  <body>
+    <div id="app">
+      <noscript>This page needs JavaScript.</noscript>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
