@@ -15,6 +15,10 @@ remembered).
   a grid of the pack's cards, filtered by rarity and type), mark
   the ones you want with ♥, then say where each card landed after the shuffle and which one
   you picked.
+- **Read from a screenshot** — instead of placing the cards by hand, choose a screenshot
+  of the Wonder Pick (the list of picks or a single one): the page finds the five cards,
+  works out the pack and fills in the board. A second screenshot after the shuffle fills in
+  where each card landed. It all runs on the device; the picture is never sent anywhere.
 - **Prediction** — before you pick, the face-down cards show where your ♥ cards tend to
   end up, from your own logs or from the community's.
 - **History** — every log you saved, with undoable delete.
@@ -55,6 +59,21 @@ stops before Dual Fusion (C1), so its Pokémon have no type yet and only show un
 types"; its trainers are recognised by having no HP. Card pictures load from that data set
 on GitHub, pinned to one commit, as you scroll (shipping them would add some 40 MB); if
 one does not load, the card is drawn in CSS instead.
+
+### How screenshots are read
+
+`src/domain/screenshot.ts` finds the cards: the game draws them on a pale background, so
+whatever is not pale forms blobs, and blobs shaped like a card, three over two, make a
+board. Each card's artwork is reduced to a fingerprint (a 12 × 7 grid of colours,
+normalised so brightness does not matter), and `src/domain/read-shot.ts` compares it with
+the fingerprint of every card in `public/card-sigs.bin` (about 1 MB, loaded the first
+time a screenshot is read). The pack is the one whose cards fit all five best. A slot
+whose best match is weak stays empty rather than guessing. Card text plays no part, so the
+game's language does not matter.
+
+`public/card-sigs.bin` is built by `node scripts/card-signatures.mjs` (Node 22.18+ and
+Python 3 with Pillow) from the same pictures the page shows; rerun it when the card list
+changes.
 
 ## Development
 
