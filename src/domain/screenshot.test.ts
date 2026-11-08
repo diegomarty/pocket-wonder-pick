@@ -1,12 +1,13 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PACKS } from "./catalog";
 import { matchAfter, parseSigs, readBoard } from "./read-shot";
 import { SIG_LEN, boardsFrom, findBoards, signature, similarity, type Box, type Pixels } from "./screenshot";
+// Through Vite, as a data URL: the project has no Node types to read files with.
+import sigsUrl from "../../public/card-sigs.bin?inline";
 
 const sigFile = () => {
-  const b = readFileSync(new URL("../../public/card-sigs.bin", import.meta.url));
-  return parseSigs(b.buffer.slice(b.byteOffset, b.byteOffset + b.length));
+  const bytes = Uint8Array.from(atob(sigsUrl.slice(sigsUrl.indexOf(",") + 1)), (c) => c.charCodeAt(0));
+  return parseSigs(bytes.buffer);
 };
 
 /** A pale screenshot with the five cards three over two, each a flat pattern of its own. */
