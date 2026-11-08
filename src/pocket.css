@@ -293,6 +293,45 @@ button:disabled {
   text-shadow: 0 1px 2px rgb(0 0 0 / 35%);
 }
 
+/* Pack logos (see ui/pack-logo.ts): faded in once loaded, on a light plate so the
+   official artwork reads on any pack colour. Without a logo nothing here applies. */
+.pack-logo {
+  display: block;
+  width: 100%;
+  height: 42px;
+  object-fit: contain;
+  padding: 3px 4px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 88%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.has-logo > .pack-logo {
+  opacity: 1;
+}
+
+.hist-pack .pack-logo {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  border-radius: inherit;
+  box-shadow: none;
+}
+
+.hist-pack.has-logo {
+  width: 72px;
+}
+
+.bar-logo {
+  height: 18px;
+  max-width: 56px;
+  margin-right: 6px;
+  vertical-align: -4px;
+  object-fit: contain;
+}
+
 /* ---------- boards ---------- */
 
 .board {
@@ -1176,6 +1215,9 @@ select {
 }
 
 .hist-pack {
+  position: relative;
+  overflow: hidden;
+  transition: width 0.2s;
   width: 38px;
   height: 52px;
   flex: none;

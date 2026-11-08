@@ -8,6 +8,7 @@ import { pushPending } from "../infra/sync";
 import { cardFace } from "./cards";
 import { h, icon, replace } from "./dom";
 import { toast } from "./sheet";
+import { packLogo } from "./pack-logo";
 
 let root: HTMLElement;
 let shown = 30;
@@ -91,7 +92,12 @@ function item(r: PickRecord): HTMLElement {
           renderHistory();
         },
       },
-      h("span", { class: "hist-pack" }, r.pack === "MIX" ? "∞" : r.pack === "X" ? "?" : r.pack),
+      h(
+        "span",
+        { class: "hist-pack" },
+        h("span", { class: "hist-code" }, r.pack === "MIX" ? "∞" : r.pack === "X" ? "?" : r.pack),
+        packLogo(r.pack),
+      ),
       h(
         "span",
         { class: "hist-main" },

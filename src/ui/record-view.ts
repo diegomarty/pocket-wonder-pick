@@ -23,6 +23,7 @@ import { cachedCommunityStats, communityStats, pushPending, serverUrl } from "..
 import { cardBack, cardFace, rarityTag } from "./cards";
 import { h, icon, replace } from "./dom";
 import { closeSheet, openSheet, toast } from "./sheet";
+import { packLogo } from "./pack-logo";
 
 const ALL_PACKS: Pack[] = [...PACKS, MIX, OTHER];
 
@@ -98,6 +99,7 @@ function packPicker(): HTMLElement {
             onclick: () => choosePack(pk.code),
           },
           h("span", { class: "pack-code" }, pk.code === "MIX" ? "∞" : pk.code === "X" ? "?" : pk.code),
+          packLogo(pk.code),
           h("span", { class: "pack-name" }, pk.name),
         ),
       ),

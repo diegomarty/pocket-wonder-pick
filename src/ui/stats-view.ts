@@ -6,6 +6,7 @@ import { CHI2_CRITICAL_4DF, aggregate, chiSquare, type Stats } from "../domain/s
 import { loadRecords, store } from "../infra/storage";
 import { cachedCommunityStats, communityStats, serverUrl } from "../infra/sync";
 import { h, icon, replace, type Child } from "./dom";
+import { packLogo } from "./pack-logo";
 
 let root: HTMLElement;
 const st = store.get("statsView", { who: "me" as "me" | "all", pack: "", from: 2 });
@@ -243,6 +244,7 @@ function draw(body: HTMLElement, S: Stats, mine: boolean): void {
               .sort((a, b) => b[1][0] - a[1][0])
               .map(([code, [n, hit]]) => ({
                 label: `${code} · ${packByCode(code)?.name ?? ""}`,
+                logo: code,
                 n,
                 hit,
                 hue: packByCode(code)?.hue,
@@ -260,7 +262,7 @@ function kpi(label: string, value: string, sub: string, tone = ""): HTMLElement 
 }
 
 function bars(
-  rows: { label: string; n: number; hit: number; hue?: number | undefined }[],
+  rows: { label: string; n: number; hit: number; hue?: number | undefined; logo?: string }[],
   nLabel: string,
 ): HTMLElement {
   if (!rows.length) return h("p", { class: "sub" }, t("noDataShort"));
@@ -271,7 +273,7 @@ function bars(
       h(
         "li",
         { style: r.hue !== undefined ? `--h:${r.hue}` : "" },
-        h("span", { class: "bar-label" }, r.label),
+        h("span", { class: "bar-label" }, r.logo ? packLogo(r.logo, "bar-logo") : null, r.label),
         h("span", { class: "bar" }, h("i", { style: `width:${pct(r.hit, r.n)}%` })),
         h("span", { class: "bar-val" }, `${pct(r.hit, r.n)}%`, h("small", null, `${r.hit}/${r.n} ${nLabel}`)),
       ),

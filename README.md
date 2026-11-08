@@ -42,7 +42,8 @@ the Japanese list kept by the
 [card-request-box](https://card-request-box.github.io/getchallenge.html) Get Challenge
 log, which this tool is modelled on. English and Spanish names come from
 [TCGdex](https://tcgdex.dev/), species names from [PokeAPI](https://pokeapi.co/), and
-hand-written dictionaries for trainers and items. Names of the newest packs (and some
+hand-written dictionaries for trainers and items. Pack logos are loaded at runtime from TCGdex's image
+server (nothing is bundled); a pack without one keeps its coloured tile. Names of the newest packs (and some
 Spanish trainer names) are our own translations and may not match the game yet; the page
 says so.
 
