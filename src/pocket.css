@@ -1756,3 +1756,88 @@ code {
   border-radius: 14px;
   background: var(--bg);
 }
+
+/* ---------- stats: shuffle panel, matrix, example ---------- */
+
+.sample-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1.5px dashed var(--gold);
+  background: rgb(231 181 60 / 12%);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.panel.key .scope {
+  display: inline-flex;
+  margin: 2px 0 10px;
+}
+
+.from-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.from-btn small {
+  font-size: 0.6rem;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.heat-tile .cmp {
+  font-size: 0.64rem;
+  opacity: 0.7;
+}
+
+.advice {
+  margin: 12px 0 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.mx-wrap {
+  overflow-x: auto;
+  margin: 4px 0 0;
+}
+
+.mx {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 3px;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.mx th {
+  color: var(--muted);
+  font-weight: 700;
+  padding: 4px 2px;
+}
+
+.mx thead th:first-child {
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+.mx td {
+  padding: 8px 2px;
+  border-radius: 6px;
+  background: rgb(242 193 78 / calc(var(--heat, 0) * 100%));
+  font-weight: 600;
+}
+
+.mx td.top {
+  font-weight: 900;
+  box-shadow: inset 0 0 0 2px var(--gold);
+}

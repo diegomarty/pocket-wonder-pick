@@ -7,21 +7,29 @@
  * Adaptado del Apps Script de ゲットチャレンジ de card-request-box (mismo protocolo:
  * gc_push / gc_mine / gc_stats), traducido y sin la parte de reconocimiento de capturas.
  *
- * Cómo montarlo:
- *   1. Crea una hoja de cálculo de Google y copia su ID (lo que va entre /d/ y /edit).
- *   2. Extensiones → Apps Script. Pega este archivo entero y pon el ID en SHEET_ID.
- *   3. Ejecuta `setup` una vez (pedirá permisos) para crear la pestaña.
- *   4. Implementar → Nueva implementación → Aplicación web.
- *      Ejecutar como: «Yo». Quién tiene acceso: «Cualquier usuario».
- *   5. Copia la URL que acaba en /exec y pégala en Ajustes de la página.
+ * Cómo montarlo (unos 5 minutos, con tu cuenta de Google):
+ *   1. Entra en https://script.google.com → «Nuevo proyecto». Borra lo que haya y pega
+ *      este archivo entero. Guarda (Ctrl+S).
+ *   2. Elige la función `setup` arriba y pulsa «Ejecutar». Pedirá permisos (es tu propia
+ *      cuenta): acéptalos. Crea la hoja de cálculo «Elecciones Milagrosas – registros» en
+ *      tu Drive y escribe su enlace en el registro de ejecución.
+ *   3. «Implementar» → «Nueva implementación» → tipo «Aplicación web».
+ *      Ejecutar como: «Yo». Quién tiene acceso: «Cualquier usuario». Implementar.
+ *   4. Copia la URL que acaba en /exec. Ponla en src/config.ts (DEFAULT_SERVER) para que
+ *      la use todo el mundo, o solo en Ajustes de la página para probarla.
+ *
+ * Si ya tienes una hoja, pon su ID (lo que va entre /d/ y /edit) en SHEET_ID y `setup`
+ * la usará en vez de crear otra.
  */
 
-const SHEET_ID = "PON_AQUI_EL_ID_DE_TU_HOJA";
+const SHEET_ID = "";
 
 const SHEET = "Elecciones";
 const HEAD = ["id", "fecha", "dueño", "clave", "sobre", "cartas antes", "quería (antes)", "elegida (después)", "después (origen por posición)", "acierto", "borrado"];
 const MAX_PUSH = 50;
 const STATS_CACHE_SEC = 600;
+/** Periodos que la página puede pedir, en días (0 = todo). Otros se tratan como 0. */
+const PERIODS = [0, 7, 30, 90];
 const RG = { d1: "◆1–2", d2: "◆1–2", d3: "◆3", d4: "◆4", s1: "★1", s2: "★2", item: "item" };
 
 function doGet() {
@@ -34,7 +42,7 @@ function doPost(e) {
   try {
     if (b.action === "gc_push") return json(push(b));
     if (b.action === "gc_mine") return json(mine(b));
-    if (b.action === "gc_stats") return json({ ok: true, stats: stats(String(b.pack || "")) });
+    if (b.action === "gc_stats") return json({ ok: true, stats: stats(String(b.pack || ""), Number(b.days) || 0) });
     return json({ ok: false, error: "bad_action" });
   } catch (err) {
     return json({ ok: false, error: String((err && err.message) || err) });
@@ -46,12 +54,23 @@ function json(o) {
 }
 
 function setup() {
+  const props = PropertiesService.getScriptProperties();
+  if (!SHEET_ID && !props.getProperty("sheetId")) {
+    props.setProperty("sheetId", SpreadsheetApp.create("Elecciones Milagrosas – registros").getId());
+  }
   sheet();
-  Logger.log("Listo: " + SpreadsheetApp.openById(SHEET_ID).getUrl());
+  Logger.log("Listo. La hoja: " + book().getUrl());
+}
+
+/** La hoja de cálculo: la de SHEET_ID, o la que creó `setup`. */
+function book() {
+  const id = SHEET_ID || PropertiesService.getScriptProperties().getProperty("sheetId");
+  if (!id) throw new Error("no_sheet: ejecuta setup una vez");
+  return SpreadsheetApp.openById(id);
 }
 
 function sheet() {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const ss = book();
   let sh = ss.getSheetByName(SHEET);
   if (!sh) {
     sh = ss.insertSheet(SHEET);
@@ -152,24 +171,33 @@ function cacheKeys() {
   const packs = ["_"];
   const sh = sheet(), last = sh.getLastRow();
   if (last > 1) sh.getRange(2, 5, last - 1, 1).getValues().forEach(function (v) { if (packs.indexOf(v[0]) < 0) packs.push(v[0]); });
-  return packs.map(function (p) { return "stats:" + p; });
+  const keys = [];
+  packs.forEach(function (p) { PERIODS.forEach(function (d) { keys.push(statsKey(p, d)); }); });
+  return keys;
 }
 
+function statsKey(pack, days) { return "stats:" + (pack || "_") + (days ? ":" + days : ""); }
+
 // Misma forma que calcula la página para «Mis registros» (src/domain/stats.ts).
-function stats(pack) {
+// `days`: solo los últimos días (0 = todo); se devuelve en S.days para que la página
+// sepa que el servidor lo entendió.
+function stats(pack, days) {
+  days = PERIODS.indexOf(days) > 0 ? days : 0;
+  const since = days ? Date.now() - days * 24 * 3600 * 1000 : 0;
   const cache = CacheService.getScriptCache();
-  const ck = "stats:" + (pack || "_");
+  const ck = statsKey(pack, days);
   const cached = cache.get(ck);
   if (cached) return JSON.parse(cached);
   const sh = sheet(), last = sh.getLastRow();
   const rows = last > 1 ? sh.getRange(2, 1, last - 1, HEAD.length).getValues() : [];
   const z = function () { return [0, 1, 2, 3, 4].map(function () { return [0, 0, 0, 0, 0]; }); };
   const S = { n: 0, hit: 0, expect: 0, getN: [0, 0, 0, 0, 0], getHit: [0, 0, 0, 0, 0], wantAt: [0, 0, 0, 0, 0], wantN: 0,
-    moveAll: z(), moveWant: z(), rar: {}, packs: {}, users: 0, updated: Date.now() };
+    moveAll: z(), moveWant: z(), rar: {}, packs: {}, users: 0, updated: Date.now(), days: days };
   const users = {};
   rows.forEach(function (row) {
     if (row[10]) return;
     if (pack && row[4] !== pack) return;
+    if (since && new Date(row[1]).getTime() < since) return;
     let r;
     try { r = toRecord(row); } catch (e) { return; }
     const A = r.after;

@@ -11,13 +11,15 @@
 import type { PickRecord } from "../domain/record";
 import { isPermutation } from "../domain/record";
 import type { Stats } from "../domain/stats";
+import { DEFAULT_SERVER } from "../config";
 import { loadRecords, owner, previousOwner, saveRecords, store } from "./storage";
 
 const STATS_TTL_MS = 10 * 60_000;
 const MINE_TTL_MS = 24 * 3600_000;
 
+/** The server in use: the one set in Settings, or the default (an empty setting means none). */
 export function serverUrl(): string {
-  return store.get("server", "");
+  return store.get<string | null>("server", null) ?? DEFAULT_SERVER;
 }
 
 export function setServerUrl(url: string): void {
@@ -131,17 +133,24 @@ export async function pullMine(force = false): Promise<number> {
 
 type StatsCache = Record<string, { at: number; data: Stats }>;
 
-export function cachedCommunityStats(pack: string): Stats | null {
-  const c = store.get<StatsCache>("statsCache", {})[pack || "_"];
+const statsKey = (pack: string, days: number) => (pack || "_") + (days ? ":" + days : "");
+
+export function cachedCommunityStats(pack: string, days = 0): Stats | null {
+  const c = store.get<StatsCache>("statsCache", {})[statsKey(pack, days)];
   return c ? c.data : null;
 }
 
-export async function communityStats(pack: string): Promise<Stats> {
+/**
+ * The community totals for a pack ("" for all) over the last `days` (0 for all time).
+ * A server that does not know about periods sends the totals for all time and no
+ * `days` back; the page says so.
+ */
+export async function communityStats(pack: string, days = 0): Promise<Stats> {
   const cache = store.get<StatsCache>("statsCache", {});
-  const k = pack || "_";
+  const k = statsKey(pack, days);
   const c = cache[k];
   if (c && Date.now() - c.at < STATS_TTL_MS) return c.data;
-  const r = await api<{ ok: boolean; stats?: Stats }>({ action: "gc_stats", pack }, 25_000);
+  const r = await api<{ ok: boolean; stats?: Stats }>({ action: "gc_stats", pack, ...(days ? { days } : {}) }, 25_000);
   if (!r.ok || !r.stats) throw new Error("bad_stats");
   cache[k] = { at: Date.now(), data: r.stats };
   store.set("statsCache", cache);
