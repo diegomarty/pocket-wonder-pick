@@ -19,7 +19,16 @@ import {
   type Pack,
   type Rarity,
 } from "../domain/catalog";
-import { autoComplete, draftProblem, isHit, newDraft, toRecord, type Draft, type DraftProblem } from "../domain/record";
+import {
+  autoComplete,
+  draftProblem,
+  isHit,
+  newDraft,
+  samePick,
+  toRecord,
+  type Draft,
+  type DraftProblem,
+} from "../domain/record";
 import { t, tr } from "../i18n";
 import { aggregate, predict } from "../domain/stats";
 import { loadRecords, saveRecords, store } from "../infra/storage";
@@ -28,8 +37,9 @@ import { cardBack, cardFace, rarityTag, typeDot } from "./cards";
 import { h, icon, replace } from "./dom";
 import { closeSheet, openSheet, toast } from "./sheet";
 import { packLogo } from "./pack-logo";
-import { matchAfter, type KnownSig, type ShotRead } from "../domain/read-shot";
-import { chooseImage, loadSigs, readShot } from "./shot";
+import { bestOrder, type KnownSig, type ShotRead } from "../domain/read-shot";
+import { bestSimilarity } from "../domain/screenshot";
+import { chooseImages, loadSigs, readShot } from "./shot";
 
 const ALL_PACKS: Pack[] = [...PACKS, MIX, OTHER];
 
@@ -203,36 +213,35 @@ function shotButton(which: "before" | "after", label: string): HTMLElement {
   );
 }
 
+/**
+ * One or two screenshots: the board before the shuffle, the result screen after it
+ * (the one with the "GET" mark over the card the player got), or both at once. Each
+ * goes where it belongs, whichever button was used and in whatever order they come.
+ */
 async function fromShot(which: "before" | "after"): Promise<void> {
-  const file = await chooseImage();
-  if (!file) return;
+  const files = await chooseImages();
+  if (!files.length) return;
   shotBusy = which;
   render();
   try {
-    if (which === "before") {
-      const reads = await readShot(file, { mixed: draft.pack === MIX.code });
-      if (!reads.length) toast(t("shotNone"), { error: true });
-      else if (reads.length === 1) applyBefore(reads[0]!);
-      else chooseBoard(reads, applyBefore);
-    } else {
-      const known = knownOfDraft(await loadSigs());
-      const reads = await readShot(file, { mixed: true, known });
-      if (!reads.length) toast(t("shotNone"), { error: true });
-      else if (reads.length === 1) applyAfter(reads[0]!);
-      else chooseBoard(reads, applyAfter);
-    }
+    const all = await loadSigs();
+    const mixed = draft.pack === MIX.code;
+    const perFile = [];
+    for (const f of files.slice(0, 2)) perFile.push(await readShot(f, { mixed, known: all }));
+    const reads = perFile.filter((r) => r.length);
+    if (!reads.length) return toast(t("shotNone"), { error: true });
+    if (reads.length === 1 && reads[0]!.length > 1) return chooseBoard(reads[0]!, (r) => place([r], which, all));
+    place(
+      reads.map((r) => r[0]!),
+      which,
+      all,
+    );
   } catch {
     toast(t("shotFail"), { error: true });
   } finally {
     shotBusy = "";
     render();
   }
-}
-
-/** The fingerprints of the five cards already on the board, to tell them apart after the shuffle. */
-function knownOfDraft(all: KnownSig[]): KnownSig[] {
-  const keys = new Set(draft.cards.map((c) => (c ? cardArt(draft.pack, c) : null)).filter(Boolean));
-  return all.filter((k) => keys.has(k.pack.toLowerCase() + "/" + String(k.no).padStart(3, "0")));
 }
 
 /** A screenshot of the list of picks can show several: the user says which. */
@@ -267,44 +276,63 @@ function chooseBoard(reads: ShotRead[], apply: (r: ShotRead) => void): void {
   ]);
 }
 
-function applyBefore(r: ShotRead): void {
-  const prev = draft;
+/** Puts each read where it belongs: a board with a "GET" mark is the result screen. */
+function place(reads: ShotRead[], which: "before" | "after", all: KnownSig[]): void {
+  const prev = structuredClone(draft);
+  const undo = { label: t("undo"), run: () => ((draft = prev), update()) };
+  let after = reads.find((r) => r.get >= 0) ?? null;
+  let before = reads.find((r) => r !== after) ?? null;
+  // A single screenshot with no mark, from the "after" button: take the user's word for it.
+  if (!after && which === "after" && reads.length === 1 && draft.cards.every(Boolean)) {
+    after = before;
+    before = null;
+  }
+  const msgs: string[] = [];
+  if (before) msgs.push(fillBefore(before));
+  if (after) {
+    if (!draft.cards.every(Boolean)) msgs.push(t("shotNeedBefore"));
+    else msgs.push(fillAfter(after, all));
+  }
+  update();
+  if (before) revealPack("smooth");
+  toast(msgs.join(" "), { action: undo });
+}
+
+function fillBefore(r: ShotRead): string {
   draft = newDraft(r.pack);
   r.slots.forEach((s, i) => {
     if (s) draft.cards[i] = { no: s.card.no, name: s.card.name, r: s.card.r, ...(s.card.hp ? { hp: s.card.hp } : {}) };
   });
   store.set("lastPack", r.pack);
-  update();
-  revealPack("smooth");
   const n = r.slots.filter(Boolean).length;
-  toast(n === 5 ? t("shotRead") : t("shotPartial", { n }), {
-    action: {
-      label: t("undo"),
-      run: () => {
-        draft = prev;
-        update();
-      },
-    },
-  });
+  return n === 5 ? t("shotRead") : t("shotPartial", { n });
 }
 
-function applyAfter(r: ShotRead): void {
-  const after = autoComplete(matchAfter(draft.cards, r.slots));
-  const n = after.filter((v) => v >= 0).length;
-  if (!n) return toast(t("shotAfterNone"), { error: true });
-  const prev = draft.after;
-  draft.after = after;
-  if (draft.get >= 0 && after[draft.get]! < 0) draft.get = -1;
-  update();
-  toast(n === 5 ? t("shotAfterRead") : t("shotPartial", { n }), {
-    action: {
-      label: t("undo"),
-      run: () => {
-        draft.after = prev;
-        update();
-      },
-    },
-  });
+/**
+ * Matches the result screen's cards with the five on the board: how well each slot
+ * after fits each card before, by their pictures, then the best of the 120 orders.
+ * An hourglass fits an hourglass of the same kind.
+ */
+function fillAfter(r: ShotRead, all: KnownSig[]): string {
+  const sigOf = (i: number) => {
+    const c = draft.cards[i];
+    const key = c ? cardArt(draft.pack, c) : null;
+    return key ? all.find((k) => k.pack.toLowerCase() + "/" + String(k.no).padStart(3, "0") === key) : undefined;
+  };
+  const fit = r.found.map((found, p) =>
+    draft.cards.map((c, i) => {
+      if (c?.r === "item") return r.slots[p]?.card.name === c.name ? 1 : 0;
+      const k = sigOf(i);
+      return k ? bestSimilarity(found, k.sig) / 32 : 0;
+    }),
+  );
+  const order = bestOrder(fit);
+  const fits = order.map((i, p) => fit[p]![i]!);
+  // Five poor fits: these are not the cards above.
+  if (fits.reduce((a, b) => a + b, 0) / 5 < 0.6) return t("shotAfterNone");
+  draft.after = order;
+  draft.get = r.get;
+  return r.get >= 0 ? t("shotAfterGot", { n: r.get + 1 }) : t("shotAfterRead");
 }
 
 function toggleWant(i: number): void {
@@ -749,7 +777,9 @@ function resultBar(): HTMLElement {
 function save(): void {
   if (draftProblem(draft)) return;
   const rec = toRecord(draft);
-  saveRecords([rec, ...loadRecords()]);
+  const old = loadRecords();
+  if (old.some((r) => !r.deleted && samePick(r, rec))) return toast(t("dupPick"), { error: true });
+  saveRecords([rec, ...old]);
   toast(isHit(rec) ? t("savedHit") : t("saved"));
   draft = newDraft(draft.pack);
   update();
