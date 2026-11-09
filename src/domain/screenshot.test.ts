@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { PACKS } from "./catalog";
-import { matchAfter, parseSigs, readBoard } from "./read-shot";
-import { SIG_LEN, boardsFrom, findBoards, signature, similarity, type Box, type Pixels } from "./screenshot";
+import { bestOrder, parseSigs, readBoard } from "./read-shot";
+import {
+  SIG_LEN,
+  boardsFrom,
+  findBoards,
+  getMark,
+  hourglass,
+  signature,
+  similarity,
+  type Box,
+  type Pixels,
+} from "./screenshot";
+import { samePick } from "./record";
 // Through Vite, as a data URL: the project has no Node types to read files with.
 import sigsUrl from "../../public/card-sigs.bin?inline";
 
@@ -68,6 +79,40 @@ describe("screenshot", () => {
   });
 });
 
+/** A flat picture with coloured rectangles painted on it. */
+function paint(w: number, h: number, rects: [Box, [number, number, number]][]): Pixels {
+  const data = new Uint8ClampedArray(w * h * 4);
+  for (let i = 0; i < w * h; i++) data.set([236, 240, 246, 255], i * 4);
+  for (const [b, c] of rects)
+    for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) data.set([...c, 255], (y * w + x) * 4);
+  return { width: w, height: h, data };
+}
+
+describe("marks", () => {
+  const card: Box = { x: 40, y: 60, w: 100, h: 140 };
+  it("sees the teal GET mark over the card the player got", () => {
+    const withMark = paint(200, 260, [
+      [card, [230, 120, 60]],
+      [{ x: 60, y: 48, w: 60, h: 20 }, [40, 190, 180]],
+    ]);
+    expect(getMark(withMark, card)).toBeGreaterThan(0.15);
+    expect(getMark(paint(200, 260, [[card, [230, 120, 60]]]), card)).toBeLessThan(0.15);
+  });
+
+  it("tells the two hourglasses apart, and a card from both", () => {
+    expect(hourglass(paint(200, 260, [[card, [240, 140, 30]]]), card)).toBe("wonder");
+    expect(hourglass(paint(200, 260, [[card, [110, 90, 220]]]), card)).toBe("pack");
+    expect(hourglass(paint(200, 260, [[card, [236, 240, 246]]]), card)).toBeNull();
+  });
+
+  it("knows a Wonder Pick logged twice", () => {
+    const c = { no: 1, name: "Pikachu", r: "d1" as const };
+    const a = { pack: "A1", cards: [c, c, c, c, c], after: [1, 0, 2, 3, 4] };
+    expect(samePick(a, { ...a })).toBe(true);
+    expect(samePick(a, { ...a, after: [0, 1, 2, 3, 4] })).toBe(false);
+  });
+});
+
 describe("reading", () => {
   it("has a fingerprint for every card of every pack", () => {
     const known = sigFile();
@@ -89,16 +134,15 @@ describe("reading", () => {
     expect(read.slots.map((s) => s?.card.no)).toEqual([1, 33, 35, 94, 129]);
   });
 
-  it("works out where each card went after the shuffle", () => {
-    const c = (name: string) => ({ name, r: "d1" as const });
-    const before = [c("A"), c("B"), c("C"), c("D"), c("E")];
-    const read = ["C", "A", "E", "B", "D"].map((name) => ({
-      card: { no: 1, name, r: "d1" as const },
-      pack: "A1",
-      score: 1,
-    }));
-    expect(matchAfter(before, read)).toEqual([2, 0, 4, 1, 3]);
-    expect(matchAfter(before, [null, ...read.slice(1)])).toEqual([-1, 0, 4, 1, 3]);
+  it("works out where each card went after the shuffle, all five together", () => {
+    // fit[p][i]: how well the card now in p fits the card that was in i. Card 0 and card 1
+    // look alike; only the best overall order tells them apart.
+    const fit = [0, 1, 2, 3, 4].map(() => [0.2, 0.2, 0.2, 0.2, 0.2]);
+    const truth = [2, 0, 4, 1, 3];
+    truth.forEach((i, p) => (fit[p]![i] = 0.95));
+    fit[1]![1] = 0.9; // slot 1 holds card 0, but card 1 looks almost the same…
+    fit[3]![0] = 0.9; // …and slot 3 holds card 1, which looks like card 0.
+    expect(bestOrder(fit)).toEqual(truth);
   });
 });
 

@@ -9,8 +9,8 @@
  * wrong card.
  */
 
-import { MIX, PACKS, type Card } from "./catalog";
-import { SIG_LEN, bestSimilarity, signatures, type Box, type Pixels } from "./screenshot";
+import { ITEMS, MIX, PACKS, type Card } from "./catalog";
+import { GET_MIN, SIG_LEN, bestSimilarity, getMark, hourglass, signatures, type Box, type Pixels } from "./screenshot";
 
 export interface KnownSig {
   /** Pack code and card number. */
@@ -53,6 +53,13 @@ export interface ShotRead {
   /** The pack the five fit best, or MIX when asked for the mixed list. */
   pack: string;
   slots: (SlotRead | null)[];
+  /**
+   * The slot with the "GET" mark, or -1. With one, this is the result screen, after
+   * the shuffle, and the mark says which card the player got.
+   */
+  get: number;
+  /** Each slot's fingerprints, to match these cards with another screenshot's. */
+  found: Float32Array[][];
 }
 
 const cardOf = (pack: string, no: number) => PACKS.find((p) => p.code === pack)?.cards.find((c) => c.no === no);
@@ -90,32 +97,51 @@ export function readBoard(px: Pixels, board: Box[], known: KnownSig[], mixed = f
     }
   }
 
-  const slots = board.map((_, slot): SlotRead | null => {
+  const slots = board.map((box, slot): SlotRead | null => {
     const { best, at } = bestIn(slot, pack);
-    if (at < 0 || best < MIN_SCORE) return null;
+    if (at < 0 || best < MIN_SCORE) {
+      // No card fits: an hourglass, maybe.
+      const kind = hourglass(px, box);
+      const item = kind && ITEMS[kind === "wonder" ? 0 : 1];
+      return item ? { card: item, pack: pack ?? "", score: 0 } : null;
+    }
     const k = known[at]!;
     const card = cardOf(k.pack, k.no);
     return card ? { card, pack: k.pack, score: best } : null;
   });
-  return { pack: mixed ? MIX.code : (pack ?? PACKS[0]!.code), slots };
+  const marks = board.map((b) => getMark(px, b));
+  const top = Math.max(...marks);
+  return {
+    pack: mixed ? MIX.code : (pack ?? PACKS[0]!.code),
+    slots,
+    get: top > GET_MIN ? marks.indexOf(top) : -1,
+    found,
+  };
 }
 
 /**
- * Where each card of the board before the shuffle ended up, from a board read after
- * it: `after[p]` is the slot (0–4) the card now in `p` had before, or -1 when that card
- * is not one of the five. Cards are compared by name and rarity, so two copies of the
- * same card are told apart by position only as far as they can be.
+ * Where each card before the shuffle went, from how well each slot after it fits
+ * each card before: `fit[p][i]` for the card now in `p` and the card that was in `i`.
+ * Tries all 120 orders and keeps the one that fits best overall, so two similar
+ * cards are told apart by the others. `after[p]` is the slot before (as in records).
  */
-export function matchAfter(
-  before: ({ name: string; r: string } | null)[],
-  read: (SlotRead | null)[],
-  localName: (c: Card) => string = (c) => c.name,
-): number[] {
-  const left = before.map((c, i) => (c ? i : -1)).filter((i) => i >= 0);
-  return read.map((s) => {
-    if (!s) return -1;
-    const k = left.findIndex((i) => before[i]!.name === localName(s.card) && before[i]!.r === s.card.r);
-    if (k < 0) return -1;
-    return left.splice(k, 1)[0]!;
-  });
+export function bestOrder(fit: number[][]): number[] {
+  let best: number[] = [0, 1, 2, 3, 4],
+    top = -Infinity;
+  const walk = (p: number, used: number, cur: number[], sum: number) => {
+    if (p === 5) {
+      if (sum > top) {
+        top = sum;
+        best = cur.slice();
+      }
+      return;
+    }
+    for (let i = 0; i < 5; i++)
+      if (!(used & (1 << i))) {
+        cur[p] = i;
+        walk(p + 1, used | (1 << i), cur, sum + (fit[p]![i] ?? 0));
+      }
+  };
+  walk(0, 0, [], 0);
+  return best;
 }

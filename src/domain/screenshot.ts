@@ -324,3 +324,72 @@ export function bestSimilarity(found: Float32Array[], known: ArrayLike<number>):
   for (const f of found) best = Math.max(best, similarity(f, known));
   return best;
 }
+
+/** Hue (0–1), saturation and value of a colour. */
+function hsv(r: number, g: number, b: number): [number, number, number] {
+  const mx = Math.max(r, g, b),
+    mn = Math.min(r, g, b),
+    d = mx - mn;
+  let hh = 0;
+  if (d) {
+    hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    hh /= 6;
+    if (hh < 0) hh += 1;
+  }
+  return [hh, mx ? d / mx : 0, mx / 255];
+}
+
+/** Calls `fn` with the colour of a grid of points over a box (clipped to the picture). */
+function sample(
+  px: Pixels,
+  b: Box,
+  cols: number,
+  rows: number,
+  fn: (r: number, g: number, bl: number) => void,
+): number {
+  let n = 0;
+  for (let j = 0; j < rows; j++)
+    for (let i = 0; i < cols; i++) {
+      const x = Math.floor(b.x + ((i + 0.5) * b.w) / cols);
+      const y = Math.floor(b.y + ((j + 0.5) * b.h) / rows);
+      if (x < 0 || y < 0 || x >= px.width || y >= px.height) continue;
+      const k = (y * px.width + x) * 4;
+      fn(px.data[k]!, px.data[k + 1]!, px.data[k + 2]!);
+      n++;
+    }
+  return n;
+}
+
+/**
+ * How much of the teal "GET" mark sits on top of a card (0–1). On the result screen
+ * the game puts it over the card the player got; above 0.15 it is there. Thresholds
+ * from the Japanese tool, measured on real screenshots.
+ */
+export function getMark(px: Pixels, box: Box): number {
+  let teal = 0;
+  const n = sample(px, { x: box.x, y: box.y - box.h * 0.1, w: box.w, h: box.h * 0.18 }, 60, 18, (r, g, b) => {
+    const [hh, s, v] = hsv(r, g, b);
+    if (hh > 0.42 && hh < 0.54 && s > 0.38 && v > 0.5) teal++;
+  });
+  return n ? teal / n : 0;
+}
+export const GET_MIN = 0.15;
+
+/**
+ * An hourglass in place of a card: orange is a Wonder Hourglass, blue-purple a Pack
+ * Hourglass (it has a yellow Pikachu on top, so three tenths purple is enough).
+ * Null when the slot is not mostly one of those colours.
+ */
+export function hourglass(px: Pixels, box: Box): "wonder" | "pack" | null {
+  let orange = 0,
+    purple = 0;
+  const n = sample(px, box, 30, 34, (r, g, b) => {
+    const [hh, s, v] = hsv(r, g, b);
+    if (s < 0.3 || v < 0.35) return;
+    if (hh >= 0.02 && hh < 0.16) orange++;
+    else if (hh >= 0.55 && hh < 0.9) purple++;
+  });
+  const coloured = orange + purple;
+  if (!n || coloured < n * 0.25) return null;
+  return purple / coloured >= 0.3 ? "pack" : "wonder";
+}

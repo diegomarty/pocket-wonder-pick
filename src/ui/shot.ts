@@ -27,14 +27,15 @@ export function loadSigs(): Promise<KnownSig[]> {
   return sigs;
 }
 
-/** Opens the photo picker (on a phone, the gallery); null when nothing was chosen. */
-export function chooseImage(): Promise<File | null> {
+/** Opens the photo picker (on a phone, the gallery), for one or two pictures. */
+export function chooseImages(): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
-    input.addEventListener("change", () => resolve(input.files?.[0] ?? null), { once: true });
-    input.addEventListener("cancel", () => resolve(null), { once: true });
+    input.multiple = true;
+    input.addEventListener("change", () => resolve(Array.from(input.files ?? [])), { once: true });
+    input.addEventListener("cancel", () => resolve([]), { once: true });
     input.click();
   });
 }

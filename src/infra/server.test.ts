@@ -93,7 +93,8 @@ function record(i: number, over: Partial<PickRecord> = {}): PickRecord {
   ][i % 4]!;
   return {
     id: "rec" + String(i).padStart(4, "0"),
-    at: Date.now() - i * 24 * 3600_000,
+    // Half a day off whole days, so no pick sits on the edge of a period.
+    at: Date.now() - i * 24 * 3600_000 - 12 * 3600_000,
     pack: i % 3 ? "A1" : "A2",
     cards: [card(1, "d1"), card(2, "d2"), card(3, "d3"), card(4, "d4"), card(5, "s1")] as PickRecord["cards"],
     want: [i % 5],

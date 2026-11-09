@@ -92,6 +92,19 @@ export function toRecord(d: Draft, at = Date.now()): PickRecord {
   };
 }
 
+/**
+ * Two logs of the same Wonder Pick: the same pack, the same five cards in the same
+ * places, and the same shuffle. Saving one twice would count it twice in the stats.
+ */
+export function samePick(
+  a: Pick<PickRecord, "pack" | "cards" | "after">,
+  b: Pick<PickRecord, "pack" | "cards" | "after">,
+): boolean {
+  const key = (r: typeof a) =>
+    r.pack + "|" + r.cards.map((c) => (c ? `${c.no}:${c.name}:${c.r}` : "-")).join(",") + "|" + r.after.join("");
+  return key(a) === key(b);
+}
+
 /** Same rules the server applies; anything else in an imported file is dropped. */
 export function validRecord(r: unknown): r is PickRecord {
   if (!r || typeof r !== "object") return false;

@@ -119,6 +119,7 @@ const en = {
   save: "Save",
   savedHit: "Saved: a hit! 🎉",
   saved: "Saved.",
+  dupPick: "This Wonder Pick is already logged (it is in History).",
 
   histEmptyTitle: "No logs yet",
   histEmptyText: "Every Wonder Pick you log shows up here, and the stats are worked out from them.",
@@ -132,7 +133,7 @@ const en = {
   deleteLog: "Delete log",
   deleted: "Log deleted.",
   undo: "Undo",
-  shotBtn: "Read from a screenshot",
+  shotBtn: "Read from screenshots (before, after or both)",
   shotAfterBtn: "Read the result from a screenshot",
   shotBusy: "Reading…",
   shotNone: "No Wonder Pick found: the picture needs the five cards face up, three over two.",
@@ -142,6 +143,8 @@ const en = {
   shotChoose: "Which Wonder Pick?",
   shotAfterRead: "Where each card landed, read from the screenshot.",
   shotAfterNone: "Those are not the five cards above.",
+  shotAfterGot: "Where each card landed, read from the screenshot, and the one you got: {n}.",
+  shotNeedBefore: "That is the result screen: read the one before the shuffle first (or choose both at once).",
   seeMore: "Show more",
 
   stats: "Stats",
@@ -321,6 +324,7 @@ const es: Dict = {
   save: "Guardar",
   savedHit: "Guardado: ¡acierto! 🎉",
   saved: "Guardado.",
+  dupPick: "Esta Elección ya está registrada (la tienes en el Historial).",
 
   histEmptyTitle: "Aún no hay registros",
   histEmptyText: "Cada Elección que registres aparecerá aquí, y con ellas se calculan las estadísticas.",
@@ -334,7 +338,7 @@ const es: Dict = {
   deleteLog: "Borrar registro",
   deleted: "Registro borrado.",
   undo: "Deshacer",
-  shotBtn: "Leer desde una captura",
+  shotBtn: "Leer de capturas (antes, después o las dos)",
   shotAfterBtn: "Leer el resultado desde una captura",
   shotBusy: "Leyendo…",
   shotNone:
@@ -345,6 +349,8 @@ const es: Dict = {
   shotChoose: "¿Qué Elección mágica?",
   shotAfterRead: "Dónde quedó cada carta, leído de la captura.",
   shotAfterNone: "Esas no son las cinco cartas de arriba.",
+  shotAfterGot: "Dónde quedó cada carta, leído de la captura, y la que te llevaste: la {n}.",
+  shotNeedBefore: "Esa es la pantalla del resultado: lee primero la de antes de barajar (o elige las dos a la vez).",
   seeMore: "Ver más",
 
   stats: "Estadísticas",
