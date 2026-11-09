@@ -25,7 +25,13 @@ export interface Stats {
   rar: Record<string, [number, number]>;
   packs: Record<string, [number, number]>;
   users?: number;
+  /** Server only: when the totals were counted (ms), and the period they cover, echoed. */
+  updated?: number;
+  days?: number;
 }
+
+/** Periods the stats can be narrowed to, in days; 0 is all of it. */
+export const PERIODS = [0, 7, 30, 90] as const;
 
 const zero5 = () => [0, 0, 0, 0, 0];
 const zeroM = (): Matrix => [zero5(), zero5(), zero5(), zero5(), zero5()];
@@ -46,10 +52,12 @@ export function emptyStats(): Stats {
   };
 }
 
-export function aggregate(list: readonly PickRecord[], packCode = ""): Stats {
+export function aggregate(list: readonly PickRecord[], packCode = "", days = 0, now = Date.now()): Stats {
   const S = emptyStats();
+  const since = days > 0 ? now - days * 24 * 3600_000 : 0;
   for (const r of list) {
     if (r.deleted || (packCode && r.pack !== packCode)) continue;
+    if (since && (Number(r.at) || 0) < since) continue;
     const A = r.after;
     if (!isPermutation(A) || r.get < 0 || r.get > 4) continue;
     const got = A[r.get]!;
@@ -122,3 +130,33 @@ export function chiSquare(row: readonly number[]): number {
   return row.reduce((acc, o) => acc + ((o - e) * (o - e)) / e, 0);
 }
 export const CHI2_CRITICAL_4DF = 9.488;
+
+/**
+ * What the stats tab shows before anything is logged: a fixed, made-up set of picks,
+ * always the same, so the layout can be seen. The page labels it as an example.
+ */
+export function sampleStats(): Stats {
+  let seed = 7;
+  const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const list: PickRecord[] = [];
+  for (let n = 0; n < 60; n++) {
+    const after = [0, 1, 2, 3, 4];
+    for (let i = 4; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      [after[i], after[j]] = [after[j]!, after[i]!];
+    }
+    const want = Math.floor(rnd() * 5);
+    const get = Math.floor(rnd() * 5);
+    const card = (r: "d1" | "d2" | "d4" | "s1") => ({ no: 1, name: "", r });
+    list.push({
+      id: "sample" + n,
+      at: 0,
+      pack: "A1",
+      cards: [card("d1"), card("d2"), card("d4"), card("d1"), card("s1")],
+      want: [want],
+      get,
+      after,
+    });
+  }
+  return aggregate(list);
+}
